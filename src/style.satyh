@@ -32,6 +32,8 @@ module LineGraphStyle : sig
 
   val make-graphics: style -> point list -> graphics list
 
+  val make-legend: context -> style -> length -> inline-boxes
+
 end = struct
 
   type style = point list -> graphics list
@@ -81,5 +83,14 @@ end = struct
     let pt2grf pt = [fill clr (Gr.circle pt rad)] in
 
     pts |> List.map pt2grf |> List.concat
+
+  let make-legend ctx style len =
+    % let h = get-font-size ctx in
+    let h = 10pt in
+    let half-h = h *' 0.4 in
+      inline-graphics len h 0pt (fun (x, y) ->
+        make-graphics style [(0pt, half-h); (len, half-h)]
+          |> List.map (shift-graphics (x, y))
+      )
 
 end
