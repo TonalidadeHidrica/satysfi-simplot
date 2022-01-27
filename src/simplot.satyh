@@ -63,6 +63,7 @@ module Axis : sig
   type tick-style
   val tick-style-default: tick-style
   val set-tick: bool -> tick-style -> tick-style
+  val set-offset: length -> tick-style -> tick-style
 
   type axis-style
   val axis-style-default: axis-style
@@ -86,9 +87,14 @@ end = struct
 
   type tick-style = (|
     tick: bool;
+    offset: length;
   |)
-  let tick-style-default = (| tick = true |)
+  let tick-style-default = (|
+    tick = true;
+    offset = 6pt;
+  |)
   let set-tick x a = (| a with tick = x |)
+  let set-offset x a = (| a with offset = x |)
 
   type axis-style = (|
     tick-styles: tick-style list;
@@ -143,13 +149,15 @@ end = struct
     in
 
     let ticklabels =
-      let ticklabelf (xval, it) =
+      let ticklabelf (style, (xval, it)) =
         let (x, y) = ptmap (xval, ymin) in
         let ib = read-inline ctx it in
         let (wid, ht, dp) = get-natural-metrics ib in
-        draw-text (x -' wid *' 0.5, y -' 7pt -' ht) ib
+        draw-text (x -' wid *' 0.5, y -' style#offset -' ht) ib
       in
-      List.zip vals its |> List.map ticklabelf
+       List.zip vals its
+         |> zip-tick-styles axis-style#tick-styles
+         |> List.map ticklabelf
     in
 
     let axis-label = Option.map-or [] (fun label -> (
@@ -188,13 +196,15 @@ end = struct
     in
 
     let ticklabels =
-      let ticklabelf (yval, it) =
+      let ticklabelf (style, (yval, it)) =
         let (x, y) = ptmap (xmin, yval) in
         let ib = read-inline (ctxf ctx) it in
         let (wid, ht, dp) = get-natural-metrics ib in
-        draw-text (x -' 7pt -' wid, y -' (ht -' dp) *' 0.5 ) ib
+        draw-text (x -' style#offset -' wid, y -' (ht -' dp) *' 0.5 ) ib
       in
-      List.zip vals its |> List.map ticklabelf
+      List.zip vals its
+        |> zip-tick-styles axis-style#tick-styles
+        |> List.map ticklabelf
     in
 
     let axis-label = Option.map-or [] (fun label -> (
