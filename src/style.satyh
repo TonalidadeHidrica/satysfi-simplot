@@ -4,6 +4,39 @@
 @require: pervasives
 @require: gr
 
+
+type arrow-head-size = (|
+  % The height of the arrow head
+  lenL: length;
+  % The distance from the head to intersection of line and the arrow head
+  lenM: length;
+  % The half width of the arrow head
+  lenP: length;
+|)
+
+
+module Arrow : sig
+  val default-arrow-head-size: arrow-head-size
+  val arrow-head : color -> arrow-head-size -> point -> point -> graphics
+end = struct
+  let default-arrow-head-size = (|
+    lenL = 6pt;
+    lenM = 6pt;
+    lenP = 3pt;
+  |)
+
+  let arrow-head color opts ((x1, y1) as pt1) ((x2, y2) as pt2) =
+    % Copy & pasted from gr.satyh (bundled in SATySFi)
+    let theta = Geom.atan2-point pt2 pt1 in
+    let (cx, cy) = (x2 +' opts#lenL *' (cos theta), y2 +' opts#lenL *' (sin theta)) in
+    let (mx, my) = (x2 +' opts#lenM *' (cos theta), y2 +' opts#lenM *' (sin theta)) in
+    let phi = theta +. math-pi /. 2. in
+    let (p1, q1) = (cx +' opts#lenP *' (cos phi), cy +' opts#lenP *' (sin phi)) in
+    let (p2, q2) = (cx -' opts#lenP *' (cos phi), cy -' opts#lenP *' (sin phi)) in
+      fill color (Gr.polygon pt2 [(p1, q1); (mx, my); (p2, q2)])
+end
+
+
 % 折れ線グラフなどにおける線の体裁。
 module LineGraphStyle : sig
 
@@ -22,6 +55,8 @@ module LineGraphStyle : sig
       period : length * length;
       phase : length;
     |)
+
+  val arrow-head : arrow-head-size ?-> color -> style
 
   val circ : 'opts ?-> color -> style
     constraint 'opts :: (|
@@ -66,6 +101,11 @@ end = struct
           |> terminate-path
         in
         [stroke width clr path]
+
+  let arrow-head ?:arrow-head-size clr pts =
+    let arrow-head-size = arrow-head-size|> Option.unwrap-or Arrow.default-arrow-head-size in
+      List.zip pts (List.tail pts |> Option.unwrap-or [])
+        |> List.map (fun (x, y) -> Arrow.arrow-head clr arrow-head-size x y)
 
   let dashed ?:opts clr  pts =
     let (width, (d1, d2), phase) = match opts with

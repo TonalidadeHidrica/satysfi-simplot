@@ -68,10 +68,7 @@ module Axis : sig
   type axis-style
   val axis-style-default: axis-style
   val set-tick-styles: tick-style list -> axis-style -> axis-style
-  % The three length parameters are, in this order:
-  % lenL: height of arrow triangle, lenM: distance from head to intersection of line and arrow head,
-  % lenP: width of arrow
-  val set-arrow: length -> length -> length -> axis-style -> axis-style
+  val set-arrow: arrow-head-size -> axis-style -> axis-style
   val set-arrow-default: axis-style -> axis-style
   val unset-arrow: axis-style -> axis-style
   val set-label: inline-text -> axis-style -> axis-style
@@ -98,7 +95,7 @@ end = struct
 
   type axis-style = (|
     tick-styles: tick-style list;
-    arrow: (length * length * length) option;
+    arrow: arrow-head-size option;
     label: inline-text option;
   |)
   let axis-style-default = (|
@@ -107,8 +104,8 @@ end = struct
     label = None;
   |)
   let set-tick-styles x a = (| a with tick-styles = x |)
-  let set-arrow lenL lenM lenP a = (| a with arrow = Some((lenL, lenM, lenP)) |)
-  let set-arrow-default a = (| a with arrow = Some((6pt, 6pt, 3pt)) |)
+  let set-arrow opt a = (| a with arrow = Some(opt) |)
+  let set-arrow-default a = (| a with arrow = Some(Arrow.default-arrow-head-size) |)
   let unset-arrow a = (| a with arrow = None |)
   let set-label x a = (| a with label = Some(x) |)
   let unset-label a = (| a with label = None |)
@@ -131,7 +128,7 @@ end = struct
     let pt1 = (ptmap (xmin, ymin)) in
     let pt2 = (ptmap (xmax, ymin)) in
     let line = match axis-style#arrow with
-      | Some (lenL, lenM, lenP) -> Gr.arrow 1pt Color.black lenL lenM lenP pt1 pt2
+      | Some opts -> Gr.arrow 1pt Color.black opts#lenL opts#lenM opts#lenP pt1 pt2
       | None -> [stroke 1pt Color.black (Gr.line pt1 pt2)]
     in
 
@@ -178,7 +175,7 @@ end = struct
     let pt1 = (ptmap (xmin, ymin)) in
     let pt2 = (ptmap (xmin, ymax)) in
     let line = match axis-style#arrow with
-      | Some (lenL, lenM, lenP) -> Gr.arrow 1pt Color.black lenL lenM lenP pt1 pt2
+      | Some opts -> Gr.arrow 1pt Color.black opts#lenL opts#lenM opts#lenP pt1 pt2
       | None -> [stroke 1pt Color.black (Gr.line pt1 pt2)]
     in
 
