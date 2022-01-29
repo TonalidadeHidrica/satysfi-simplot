@@ -334,6 +334,60 @@ end = struct
 
 end
 
+module Grid : sig
+  type grid
+
+  val x: LineGraphStyle.style ?-> float list -> grid
+  val x-sub: LineGraphStyle.style ?-> float list -> grid
+  val y: LineGraphStyle.style ?-> float list -> grid
+  val y-sub: LineGraphStyle.style ?-> float list -> grid
+
+  val draw-grid: (| x: float * float; y: float * float|) -> pointmap -> grid -> graphics list
+end = struct
+  type orientation = Vert | Horz
+  type grid = (|
+    style: LineGraphStyle.style;
+    orient: orientation;
+    points: float list;
+  |)
+
+  let make-grid style orient points = 
+    (| style = style; orient = orient; points = points |)
+
+  let default-grid-style =
+    LineGraphStyle.solid ?:(| width = 0.5pt |) (Gray(0.4))
+  let default-sub-grid-style =
+    LineGraphStyle.solid ?:(| width = 0.5pt |) (Gray(0.7))
+
+  let x ?:style points =
+    let style = style |> Option.unwrap-or default-grid-style in
+    make-grid style Vert points
+  let y ?:style points =
+    let style = style |> Option.unwrap-or default-grid-style in
+    make-grid style Horz points
+  let x-sub ?:style points =
+    let style = style |> Option.unwrap-or default-sub-grid-style in
+    make-grid style Vert points
+  let y-sub ?:style points =
+    let style = style |> Option.unwrap-or default-sub-grid-style in
+    make-grid style Horz points
+
+  let draw-grid range ptmap grid =
+    let pts = match grid#orient with
+      | Vert ->
+          let (ymin, ymax) = range#y in
+          grid#points
+            |> List.map (fun x -> (ptmap (x, ymin), ptmap (x, ymax)))
+      | Horz ->
+          let (xmin, xmax) = range#x in
+            grid#points
+              |> List.map (fun y -> (ptmap (xmin, y), ptmap (xmax, y)))
+    in
+      pts
+        |> List.map (fun (p, q) -> LineGraphStyle.make-graphics grid#style [p; q])
+        |> List.concat
+end
+
 module Chart : sig
 
   type chart
@@ -344,6 +398,8 @@ module Chart : sig
   val add-plots : Graph.graph list -> chart -> chart
 
   val add-axis : Axis.axis -> chart -> chart
+
+  val add-grid: Grid.grid -> chart -> chart
 
   val set-xlim : float -> float -> chart -> chart
   val set-ylim : float -> float -> chart -> chart
@@ -363,6 +419,7 @@ end = struct
     canvas: canvas;
     graphs: Graph.graph list;
     axes: Axis.axis list;
+    grids: Grid.grid list;
   |)
 
   let new ht wid =
@@ -375,6 +432,7 @@ end = struct
       |);
        graphs = [];
        axes = [];
+       grids = [];
     |)
 
   let add-plots grphs cht =
@@ -391,6 +449,8 @@ end = struct
   let add-axis axis cht =
     let axes = List.append cht#axes [axis] in
     (|cht with axes = axes|)
+
+  let add-grid grid cht = (| cht with grids = grid :: cht#grids |)
 
   let draw cht =
 
@@ -428,10 +488,11 @@ end = struct
     in
 
     let ibf ctx =
+      let gr-grids = cht#grids |> List.map (Grid.draw-grid range ptmap) |> List.concat in
       let gr-graph = cht#graphs |> List.map (Graph.draw-graph ptmap) |> List.concat in
       let gr-axis = cht#axes |> List.map (Axis.draw-axis range ptmap ctx) |> List.concat in
       inline-graphics (cht#canvas#width) (cht#canvas#height) 0pt
-        (fun origin -> [gr-graph; gr-axis] |> List.concat |> List.map (shift-graphics origin))
+        (fun origin -> [gr-grids; gr-graph; gr-axis] |> List.concat |> List.map (shift-graphics origin))
     in
     FigBox.rawbox ibf
 
