@@ -8,12 +8,9 @@
 @require: figbox/figbox
 
 @import: ../src/simplot
+@import: ../src/sequence
 
 open FigBox
-
-let linspace s e n-points =
-  let interval = (e -. s) /. (float (n-points - 1)) in
-  List.iterate n-points (fun e -> e +. interval) (s -. interval)
 
 in
 
@@ -27,8 +24,8 @@ document (|
 
   +fig-center(
     % グラフのデータ
-    let data-1 = linspace 0.0 6.283184 100 |> List.map (fun x -> (x, sin (2. *. x))) in
-    let data-2 = linspace 0.0 6.283184 100 |> List.map (fun x -> (x, cos x)) in
+    let data-1 = Sequence.linspace-n 100 0.0 6.283184 |> List.map (fun x -> (x, sin (2. *. x))) in
+    let data-2 = Sequence.linspace-n 100 0.0 6.283184 |> List.map (fun x -> (x, cos x)) in
 
     % グラフの体裁
     let graphstyle-1 = LineGraphStyle.solid Color.black in

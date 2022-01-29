@@ -355,9 +355,9 @@ end = struct
     (| style = style; orient = orient; points = points |)
 
   let default-grid-style =
-    LineGraphStyle.solid ?:(| width = 0.5pt |) (Gray(0.4))
+    LineGraphStyle.solid ?:(| width = 0.5pt |) (Gray(0.5))
   let default-sub-grid-style =
-    LineGraphStyle.solid ?:(| width = 0.5pt |) (Gray(0.7))
+    LineGraphStyle.solid ?:(| width = 0.3pt |) (Gray(0.8))
 
   let x ?:style points =
     let style = style |> Option.unwrap-or default-grid-style in

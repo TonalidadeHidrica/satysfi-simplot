@@ -1,0 +1,31 @@
+@require: base/float
+
+module Sequence : sig
+  % Arguments: number of elements, start, end
+  % Generates a list with n number of elements.
+  val linspace-n : int -> float -> float -> float list
+  % Arguments: step, start, end (inclusive)
+  % step must not be 0, or it will abort with an error
+  % you should add (or subtract) an epsilon to make sure that the "end" is included (or excluded)
+  val linspace-step : float -> float -> float -> float list
+
+  % TODO: logspace?
+end = struct
+  let linspace-n n-points s e =
+    let interval = (e -. s) /. (float (n-points - 1)) in
+    List.iterate n-points (fun e -> e +. interval) (s -. interval)
+
+  let-rec linspace-step step s e =
+    let-rec iterate-while pred succ cur =
+      if pred cur then cur :: iterate-while pred succ (succ cur)
+      else []
+    in
+    open Float in
+      if step > 0. then
+        iterate-while (fun x -> x <= e) (fun x -> x +. step) s
+      else if step < 0. then
+        iterate-while (fun x -> x >= e) (fun x -> x +. step) s
+      else
+        abort-with-message 
+          (`invalid step provided to Sequence.linsapce-step in simplot/sequence.satyh: `# ^ show-float step)
+end
