@@ -83,6 +83,8 @@ module Axis : sig
   val set-axis-position-min: axis-style -> axis-style
   val set-axis-position-max: axis-style -> axis-style
   val set-axis-position: float -> axis-style -> axis-style
+  val set-axis-color: color -> axis-style -> axis-style
+  val set-axis-width: length -> axis-style -> axis-style
 
   % val new-x: axis
   % val new-y: axis
@@ -133,12 +135,16 @@ end = struct
     arrow: arrow-head-size option;
     label: label-style option;
     position: axis-position;
+    color: color;
+    width: length;
   |)
   let axis-style-default = (|
     tick-styles = [];
     arrow = None;
     label = None;
     position = Leftmost;
+    color = Color.black;
+    width = 1pt;
   |)
   let set-tick-styles x a = (| a with tick-styles = x |)
   let set-arrow opt a = (| a with arrow = Some(opt) |)
@@ -149,6 +155,8 @@ end = struct
   let set-axis-position-min a = (| a with position = Leftmost |)
   let set-axis-position-max a = (| a with position = Rightmost |)
   let set-axis-position x a = (| a with position = CustomPosition(x) |)
+  let set-axis-color x a = (| a with color = x |)
+  let set-axis-width x a = (| a with width = x |)
 
   type axis = (| x: float * float; y: float * float|) -> pointmap -> context -> graphics list
 
@@ -180,8 +188,8 @@ end = struct
     let pt1 = (ptmap (xmin, axis-y)) in
     let pt2 = (ptmap (xmax, axis-y)) in
     let line = match axis-style#arrow with
-      | Some opts -> Gr.arrow 1pt Color.black opts#lenL opts#lenM opts#lenP pt1 pt2
-      | None -> [stroke 1pt Color.black (Gr.line pt1 pt2)]
+      | Some opts -> Gr.arrow axis-style#width axis-style#color opts#lenL opts#lenM opts#lenP pt1 pt2
+      | None -> [stroke axis-style#width axis-style#color (Gr.line pt1 pt2)]
     in
 
     let ticks =
@@ -258,8 +266,8 @@ end = struct
     let pt1 = (ptmap (axis-x, ymin)) in
     let pt2 = (ptmap (axis-x, ymax)) in
     let line = match axis-style#arrow with
-      | Some opts -> Gr.arrow 1pt Color.black opts#lenL opts#lenM opts#lenP pt1 pt2
-      | None -> [stroke 1pt Color.black (Gr.line pt1 pt2)]
+      | Some opts -> Gr.arrow axis-style#width axis-style#color opts#lenL opts#lenM opts#lenP pt1 pt2
+      | None -> [stroke axis-style#width axis-style#color (Gr.line pt1 pt2)]
     in
 
     let ticks =
