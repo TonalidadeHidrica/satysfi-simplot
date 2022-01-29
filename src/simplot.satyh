@@ -120,7 +120,7 @@ end = struct
   let set-label-centered ?:offset a =
     let offset = offset |> Option.unwrap-or 8pt in
       (| a with position = Centered offset |)
-  let set-label-rotation-degree deg a = (| a with rotation = Some(deg *. (Float.pi /. 180.)) |)
+  let set-label-rotation-degree deg a = (| a with rotation = Some(deg) |)
   let unset-label-rotation a = (| a with rotation = None |)
 
   type axis-position =
@@ -163,6 +163,12 @@ end = struct
     | Leftmost -> min
     | Rightmost -> max
     | CustomPosition(x) -> x
+
+  let draw-text-centered ctx it =
+    let gr = read-inline ctx it |> draw-text (0pt, 0pt) in
+    let ((xmin, ymin), (xmax, ymax)) = get-graphics-bbox gr in
+    let gr = shift-graphics ((xmin +' xmax) *' Float.neg 0.5, (ymin +' ymax) *' Float.neg 0.5) gr in
+      (gr, (xmax -' xmin, ymax -' ymin))
 
   let new-custom-x ?:ctxf ?:axis-style vals its range ptmap ctx =
     let ctx = Option.map-or ctx (fun ctxf -> ctxf ctx) ctxf in
@@ -266,12 +272,12 @@ end = struct
     in
 
     let axis-label = Option.map-or [] (fun label -> (
-      let ib = read-inline ctx label#text in
-      let pt = match label#position with
+      let (gr, (w, h)) = draw-text-centered ctx label#text in
+      match label#position with
         | NextToHead -> 
             let (x, y) = pt2 in
-            let (wid, ht, _ as dp) = get-natural-metrics ib in
-              (x -' wid *' 0.5, y +' 4pt)
+            let gr = gr |> shift-graphics (x, y +' h *' 0.5 +' 4pt) in
+              [gr]
         | Centered offset ->
             let bbox-xmin g = let ((x, _), (_, _)) = get-graphics-bbox g in x in
             let xmin =
@@ -279,11 +285,17 @@ end = struct
                 |> List.map bbox-xmin
                 |> List.fold-left Length.min 0pt
             in
-            let (wid, ib-h, _) = get-natural-metrics ib in
             let (_, y) = ptmap (0., (ymin +. ymax) /. 2.) in
-              (xmin -' ib-h -' offset, y -' wid *' 0.5)
-      in
-      [draw-text pt ib]
+            let rotation = match (label#rotation, axis-style#position) with
+              | (Some(r), _) -> r
+              | (None, Rightmost) -> Float.neg 90.0
+              | (None, _) -> 90.0
+            in
+            let gr =
+              gr |> Gr.rotate-graphics (0pt, 0pt) rotation
+                |> shift-graphics (xmin -' h *' 0.5 -' offset, y)
+            in
+              [gr]
     )) axis-style#label in
 
     [ticks; ticklabels; line; axis-label] |> List.concat
