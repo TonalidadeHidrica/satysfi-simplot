@@ -222,7 +222,7 @@ end = struct
       match label#position with
         | NextToHead -> 
             let (x, y) = pt2 in
-            let gr = gr |> shift-graphics (x +' w *' 0.5 +' 4pt, y -' h *' 0.5) in
+            let gr = gr |> shift-graphics (x +' w *' 0.5 +' 4pt, y) in
               [gr]
         | Centered offset ->
             let (y, coef) = match axis-style#position with
@@ -271,9 +271,9 @@ end = struct
     in
 
     let ticks =
-      let tickf (style, xval) =
+      let tickf (style, yval) =
         if style#tick then
-          let (x, y) = ptmap (xval, ymin) in
+          let (x, y) = ptmap (xmin, yval) in
           [stroke 0.5pt Color.black
             (Gr.line (x, y) (x -' 5pt, y))]
         else []
