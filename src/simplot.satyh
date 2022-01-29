@@ -65,6 +65,13 @@ module Axis : sig
   val set-tick: bool -> tick-style -> tick-style
   val set-offset: length -> tick-style -> tick-style
 
+  type label-style
+  val label: inline-text -> label-style
+  val set-label-next-to-head: label-style -> label-style
+  val set-label-centered: length ?-> label-style -> label-style
+  val set-label-rotation-degree: float -> label-style -> label-style
+  val unset-label-rotation: label-style -> label-style
+
   type axis-style
   val axis-style-default: axis-style
   val set-tick-styles: tick-style list -> axis-style -> axis-style
@@ -95,6 +102,26 @@ end = struct
   |)
   let set-tick x a = (| a with tick = x |)
   let set-offset x a = (| a with offset = x |)
+
+  type label-position =
+    | NextToHead
+    | Centered of length % offset
+  type label-style = (|
+    text: inline-text;
+    position: label-position;
+    rotation: float option;
+  |)
+  let label it = (|
+    text = it;
+    position = NextToHead;
+    rotation = None;
+  |)
+  let set-label-next-to-head a = (| a with position = NextToHead |)
+  let set-label-centered ?:offset a =
+    let offset = offset |> Option.unwrap-or 20pt in
+      (| a with position = Centered offset |)
+  let set-label-rotation-degree deg a = (| a with rotation = Some(deg *. (Float.pi /. 180.)) |)
+  let unset-label-rotation a = (| a with rotation = None |)
 
   type axis-position =
     | Leftmost
