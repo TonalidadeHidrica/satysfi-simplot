@@ -64,6 +64,8 @@ module LineGraphStyle : sig
       scale : length;
     |)
 
+  val circ-custom-colors : length -> color list -> style
+
   val rect : 'opts ?-> color -> style
     constraint 'opts :: (|
       size : length;
@@ -135,6 +137,12 @@ end = struct
     let pt2grf pt = [fill clr (Gr.circle pt rad)] in
 
     pts |> List.map pt2grf |> List.concat
+
+  let circ-custom-colors scale clrs pts =
+    let rad = scale *' 0.5 in
+    List.zip clrs pts
+      |> List.map (fun (clr, pt) -> [Gr.circle pt rad |> fill clr])
+      |> List.concat
 
   let rect ?:opts color points =
     let size = Option.map-or 2pt (fun opts -> opts#size) opts in
