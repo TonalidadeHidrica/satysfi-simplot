@@ -78,7 +78,7 @@ module Axis : sig
   val set-arrow: arrow-head-size -> axis-style -> axis-style
   val set-arrow-default: axis-style -> axis-style
   val unset-arrow: axis-style -> axis-style
-  val set-label: inline-text -> axis-style -> axis-style
+  val set-label: label-style -> axis-style -> axis-style
   val unset-label: axis-style -> axis-style
   val set-axis-position-min: axis-style -> axis-style
   val set-axis-position-max: axis-style -> axis-style
@@ -118,7 +118,7 @@ end = struct
   |)
   let set-label-next-to-head a = (| a with position = NextToHead |)
   let set-label-centered ?:offset a =
-    let offset = offset |> Option.unwrap-or 20pt in
+    let offset = offset |> Option.unwrap-or 8pt in
       (| a with position = Centered offset |)
   let set-label-rotation-degree deg a = (| a with rotation = Some(deg *. (Float.pi /. 180.)) |)
   let unset-label-rotation a = (| a with rotation = None |)
@@ -131,7 +131,7 @@ end = struct
   type axis-style = (|
     tick-styles: tick-style list;
     arrow: arrow-head-size option;
-    label: inline-text option;
+    label: label-style option;
     position: axis-position;
   |)
   let axis-style-default = (|
@@ -204,10 +204,24 @@ end = struct
     in
 
     let axis-label = Option.map-or [] (fun label -> (
-      let (x, y) = pt2 in
-      let ib = read-inline ctx label in
-      let (_ as wid, ht, _ as dp) = get-natural-metrics ib in
-      [draw-text (x +' 4pt, y -' ht *' 0.5) ib]
+      let ib = read-inline ctx label#text in
+      let pt = match label#position with
+        | NextToHead -> 
+            let (x, y) = pt2 in
+            let (_ as wid, ht, _ as dp) = get-natural-metrics ib in
+              (x +' 4pt, y -' ht *' 0.5)
+        | Centered offset ->
+            let bbox-ymin g = let ((_, y), (_, _)) = get-graphics-bbox g in y in
+            let ymin =
+              ticklabels
+                |> List.map bbox-ymin
+                |> List.fold-left Length.min 0pt
+            in
+            let (wid, ib-h, _) = get-natural-metrics ib in
+            let (x, _) = ptmap ((xmin +. xmax) /. 2., 0.) in
+              (x -' wid *' 0.5, ymin -' ib-h -' offset)
+      in
+      [draw-text pt ib]
     )) axis-style#label in
 
     [ticks; ticklabels; line; axis-label] |> List.concat
@@ -251,12 +265,13 @@ end = struct
         |> List.map ticklabelf
     in
 
-    let axis-label = Option.map-or [] (fun label -> (
-      let (x, y) = pt2 in
-      let ib = read-inline ctx label in
-      let (wid, ht, _ as dp) = get-natural-metrics ib in
-      [draw-text (x -' wid *' 0.5, y +' 4pt) ib]
-    )) axis-style#label in
+    % let axis-label = Option.map-or [] (fun label -> (
+    %   let (x, y) = pt2 in
+    %   let ib = read-inline ctx label in
+    %   let (wid, ht, _ as dp) = get-natural-metrics ib in
+    %   [draw-text (x -' wid *' 0.5, y +' 4pt) ib]
+    % )) axis-style#label in
+    let axis-label = [] in
 
     [ticks; ticklabels; line; axis-label] |> List.concat
 
