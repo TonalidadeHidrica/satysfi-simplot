@@ -210,24 +210,40 @@ end = struct
     in
 
     let axis-label = Option.map-or [] (fun label -> (
-      let ib = read-inline ctx label#text in
-      let pt = match label#position with
+      let (gr, (w, h)) = draw-text-centered ctx label#text in
+      match label#position with
         | NextToHead -> 
             let (x, y) = pt2 in
-            let (_ as wid, ht, _ as dp) = get-natural-metrics ib in
-              (x +' 4pt, y -' ht *' 0.5)
+            let gr = gr |> shift-graphics (x +' w *' 0.5 +' 4pt, y -' h *' 0.5) in
+              [gr]
         | Centered offset ->
-            let bbox-ymin g = let ((_, y), (_, _)) = get-graphics-bbox g in y in
-            let ymin =
-              ticklabels
-                |> List.map bbox-ymin
-                |> List.fold-left Length.min 0pt
+            let (y, coef) = match axis-style#position with
+              | Rightmost -> 
+                  let bbox-ymax g = let ((_, _), (_, y)) = get-graphics-bbox g in y in
+                  let (_, ymax) = ptmap (0., ymax) in
+                  let y =
+                    ticklabels
+                      |> List.map bbox-ymax
+                      |> List.fold-left Length.max ymax
+                  in
+                    (y, 1.)
+              | _ -> 
+                  let bbox-ymin g = let ((_, y), (_, _)) = get-graphics-bbox g in y in
+                  let (_, ymin) = ptmap (0., ymin) in
+                  let y =
+                    ticklabels
+                      |> List.map bbox-ymin
+                      |> List.fold-left Length.min ymin
+                  in
+                    (y, Float.neg 1.)
             in
-            let (wid, ib-h, _) = get-natural-metrics ib in
             let (x, _) = ptmap ((xmin +. xmax) /. 2., 0.) in
-              (x -' wid *' 0.5, ymin -' ib-h -' offset)
-      in
-      [draw-text pt ib]
+            let rotation = label#rotation |> Option.unwrap-or 0.0 in
+            let gr =
+              gr |> Gr.rotate-graphics (0pt, 0pt) rotation
+                |> shift-graphics (x, y +' (h *' 0.5 +' offset) *' coef)
+            in
+              [gr]
     )) axis-style#label in
 
     [ticks; ticklabels; line; axis-label] |> List.concat
