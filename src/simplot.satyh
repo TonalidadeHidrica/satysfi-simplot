@@ -265,13 +265,26 @@ end = struct
         |> List.map ticklabelf
     in
 
-    % let axis-label = Option.map-or [] (fun label -> (
-    %   let (x, y) = pt2 in
-    %   let ib = read-inline ctx label in
-    %   let (wid, ht, _ as dp) = get-natural-metrics ib in
-    %   [draw-text (x -' wid *' 0.5, y +' 4pt) ib]
-    % )) axis-style#label in
-    let axis-label = [] in
+    let axis-label = Option.map-or [] (fun label -> (
+      let ib = read-inline ctx label#text in
+      let pt = match label#position with
+        | NextToHead -> 
+            let (x, y) = pt2 in
+            let (wid, ht, _ as dp) = get-natural-metrics ib in
+              (x -' wid *' 0.5, y +' 4pt)
+        | Centered offset ->
+            let bbox-xmin g = let ((x, _), (_, _)) = get-graphics-bbox g in x in
+            let xmin =
+              ticklabels
+                |> List.map bbox-xmin
+                |> List.fold-left Length.min 0pt
+            in
+            let (wid, ib-h, _) = get-natural-metrics ib in
+            let (_, y) = ptmap (0., (ymin +. ymax) /. 2.) in
+              (xmin -' ib-h -' offset, y -' wid *' 0.5)
+      in
+      [draw-text pt ib]
+    )) axis-style#label in
 
     [ticks; ticklabels; line; axis-label] |> List.concat
 
