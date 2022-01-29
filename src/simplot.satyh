@@ -56,6 +56,54 @@ end = struct
 
 end
 
+module Text : sig
+  type text
+
+  % utility
+  val draw-text-centered: context -> inline-text -> (graphics * (length * length))
+
+  val make: (context -> context) ?-> (float * float) -> inline-text -> text
+  val draw-text: context -> pointmap -> text -> graphics list
+
+  val top-left: text -> text
+end = struct
+  type text = (|
+    it: inline-text;
+    pos: (float * float);
+    ctxmap: (context -> context) option;
+    x-shift: float;
+    y-shift: float;
+  |)
+  let make ?:ctxmap pos it = (|
+    it = it;
+    pos = pos;
+    ctxmap = ctxmap;
+    x-shift = 0.0;
+    y-shift = 0.0;
+  |)
+
+  let draw-text-centered ctx it =
+    let gr = read-inline ctx it |> draw-text (0pt, 0pt) in
+    let ((xmin, ymin), (xmax, ymax)) = get-graphics-bbox gr in
+    let gr = shift-graphics ((xmin +' xmax) *' Float.neg 0.5, (ymin +' ymax) *' Float.neg 0.5) gr in
+      (gr, (xmax -' xmin, ymax -' ymin))
+
+  let draw-text ctx ptmap text =
+    let ctxmap = text#ctxmap |> Option.unwrap-or Fn.id in
+    let ctx = ctxmap ctx in
+    let (g, (w, h)) = draw-text-centered ctx text#it in
+    let (x, y) = ptmap text#pos in
+    let g =
+      g |> shift-graphics (x +' w *' text#x-shift, y +' h *' text#y-shift)
+    in
+    [g]
+
+  let p = 0.5
+  let m = 0.-.0.5
+  let top-left text = (| text with x-shift = m; y-shift = p |)
+end
+
+
 module Axis : sig
 
   type axis
@@ -172,12 +220,6 @@ end = struct
     | Rightmost -> max
     | CustomPosition(x) -> x
 
-  let draw-text-centered ctx it =
-    let gr = read-inline ctx it |> draw-text (0pt, 0pt) in
-    let ((xmin, ymin), (xmax, ymax)) = get-graphics-bbox gr in
-    let gr = shift-graphics ((xmin +' xmax) *' Float.neg 0.5, (ymin +' ymax) *' Float.neg 0.5) gr in
-      (gr, (xmax -' xmin, ymax -' ymin))
-
   let new-custom-x ?:ctxf ?:axis-style vals its range ptmap ctx =
     let ctx = Option.map-or ctx (fun ctxf -> ctxf ctx) ctxf in
     let axis-style = Option.unwrap-or axis-style-default axis-style in
@@ -218,7 +260,7 @@ end = struct
     in
 
     let axis-label = Option.map-or [] (fun label -> (
-      let (gr, (w, h)) = draw-text-centered ctx label#text in
+      let (gr, (w, h)) = Text.draw-text-centered ctx label#text in
       match label#position with
         | NextToHead -> 
             let (x, y) = pt2 in
@@ -296,7 +338,7 @@ end = struct
     in
 
     let axis-label = Option.map-or [] (fun label -> (
-      let (gr, (w, h)) = draw-text-centered ctx label#text in
+      let (gr, (w, h)) = Text.draw-text-centered ctx label#text in
       match label#position with
         | NextToHead -> 
             let (x, y) = pt2 in
@@ -409,6 +451,9 @@ module Chart : sig
 
   val add-grid: Grid.grid -> chart -> chart
 
+  val add-text: Text.text -> chart -> chart
+  val add-texts: Text.text list -> chart -> chart
+
   val set-xlim : float -> float -> chart -> chart
   val set-ylim : float -> float -> chart -> chart
 
@@ -428,6 +473,7 @@ end = struct
     graphs: Graph.graph list;
     axes: Axis.axis list;
     grids: Grid.grid list;
+    texts: Text.text list;
   |)
 
   let new ht wid =
@@ -441,6 +487,7 @@ end = struct
        graphs = [];
        axes = [];
        grids = [];
+       texts = [];
     |)
 
   let add-plots grphs cht =
@@ -459,6 +506,9 @@ end = struct
     (|cht with axes = axes|)
 
   let add-grid grid cht = (| cht with grids = grid :: cht#grids |)
+
+  let add-text text cht = (| cht with texts = text :: cht#texts |)
+  let add-texts texts cht = (| cht with texts = List.append texts cht#texts |)
 
   let draw cht =
 
@@ -499,8 +549,9 @@ end = struct
       let gr-grids = cht#grids |> List.map (Grid.draw-grid range ptmap) |> List.concat in
       let gr-graph = cht#graphs |> List.map (Graph.draw-graph ptmap) |> List.concat in
       let gr-axis = cht#axes |> List.map (Axis.draw-axis range ptmap ctx) |> List.concat in
+      let gr-texts = cht#texts |> List.map (Text.draw-text ctx ptmap) |> List.concat in
       inline-graphics (cht#canvas#width) (cht#canvas#height) 0pt
-        (fun origin -> [gr-grids; gr-graph; gr-axis] |> List.concat |> List.map (shift-graphics origin))
+        (fun origin -> [gr-grids; gr-graph; gr-axis; gr-texts] |> List.concat |> List.map (shift-graphics origin))
     in
     FigBox.rawbox ibf
 
