@@ -1,5 +1,6 @@
 % load standard list package
 @require: base/list-ext
+@require: base/length
 @require: pervasives
 @require: gr
 
@@ -25,7 +26,18 @@ module LineGraphStyle : sig
   val circ : 'opts ?-> color -> style
     constraint 'opts :: (|
       % 基準長。ここでは直径のこと。
-      scale : length
+      scale : length;
+    |)
+
+  val rect : 'opts ?-> color -> style
+    constraint 'opts :: (|
+      size : length;
+    |)
+
+  val rect-stroke : 'opts ?-> color -> style
+    constraint 'opts :: (|
+      size : length;
+      width: length;
     |)
 
   val none: style
@@ -83,6 +95,27 @@ end = struct
     let pt2grf pt = [fill clr (Gr.circle pt rad)] in
 
     pts |> List.map pt2grf |> List.concat
+
+  let rect ?:opts color points =
+    let size = Option.map-or 2pt (fun opts -> opts#size) opts in
+    let a = size *' 0.5 in
+    let draw (x, y) = 
+      [Gr.rectangle (x -' a, y -' a) (x +' a, y +' a) |> fill color]
+    in
+    points
+      |> List.map draw
+      |> List.concat
+
+  let rect-stroke ?:opts color points =
+    let size = Option.map-or 2pt (fun opts -> opts#size) opts in
+    let width = Option.map-or 2pt (fun opts -> opts#width) opts in
+    let a = size *' 0.5 in
+    let draw (x, y) = 
+      [Gr.rectangle (x -' a, y -' a) (x +' a, y +' a) |> stroke width color]
+    in
+    points
+      |> List.map draw
+      |> List.concat
 
   let make-legend ctx style len =
     % let h = get-font-size ctx in
