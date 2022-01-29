@@ -279,11 +279,25 @@ end = struct
             let gr = gr |> shift-graphics (x, y +' h *' 0.5 +' 4pt) in
               [gr]
         | Centered offset ->
-            let bbox-xmin g = let ((x, _), (_, _)) = get-graphics-bbox g in x in
-            let xmin =
-              ticklabels
-                |> List.map bbox-xmin
-                |> List.fold-left Length.min 0pt
+            let (x, coef) = match axis-style#position with
+              | Rightmost -> 
+                  let bbox-xmax g = let ((_, _), (x, _)) = get-graphics-bbox g in x in
+                  let (xmax, _) = ptmap (xmax, 0.) in
+                  let x =
+                    ticklabels
+                      |> List.map bbox-xmax
+                      |> List.fold-left Length.max xmax
+                  in
+                    (x, 1.)
+              | _ -> 
+                  let bbox-xmin g = let ((x, _), (_, _)) = get-graphics-bbox g in x in
+                  let (xmin, _) = ptmap (xmin, 0.) in
+                  let x =
+                    ticklabels
+                      |> List.map bbox-xmin
+                      |> List.fold-left Length.min xmin
+                  in
+                    (x, Float.neg 1.)
             in
             let (_, y) = ptmap (0., (ymin +. ymax) /. 2.) in
             let rotation = match (label#rotation, axis-style#position) with
@@ -293,7 +307,7 @@ end = struct
             in
             let gr =
               gr |> Gr.rotate-graphics (0pt, 0pt) rotation
-                |> shift-graphics (xmin -' h *' 0.5 -' offset, y)
+                |> shift-graphics (x +' (h *' 0.5 +' offset) *' coef, y)
             in
               [gr]
     )) axis-style#label in
