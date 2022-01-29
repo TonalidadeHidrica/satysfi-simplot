@@ -73,6 +73,9 @@ module Axis : sig
   val unset-arrow: axis-style -> axis-style
   val set-label: inline-text -> axis-style -> axis-style
   val unset-label: axis-style -> axis-style
+  val set-axis-position-min: axis-style -> axis-style
+  val set-axis-position-max: axis-style -> axis-style
+  val set-axis-position: float -> axis-style -> axis-style
 
   % val new-x: axis
   % val new-y: axis
@@ -93,15 +96,22 @@ end = struct
   let set-tick x a = (| a with tick = x |)
   let set-offset x a = (| a with offset = x |)
 
+  type axis-position =
+    | Leftmost
+    | Rightmost
+    | CustomPosition of float
+
   type axis-style = (|
     tick-styles: tick-style list;
     arrow: arrow-head-size option;
     label: inline-text option;
+    position: axis-position;
   |)
   let axis-style-default = (|
     tick-styles = [];
     arrow = None;
     label = None;
+    position = Leftmost;
   |)
   let set-tick-styles x a = (| a with tick-styles = x |)
   let set-arrow opt a = (| a with arrow = Some(opt) |)
@@ -109,6 +119,9 @@ end = struct
   let unset-arrow a = (| a with arrow = None |)
   let set-label x a = (| a with label = Some(x) |)
   let unset-label a = (| a with label = None |)
+  let set-axis-position-min a = (| a with position = Leftmost |)
+  let set-axis-position-max a = (| a with position = Rightmost |)
+  let set-axis-position x a = (| a with position = CustomPosition(x) |)
 
   type axis = (| x: float * float; y: float * float|) -> pointmap -> context -> graphics list
 
@@ -119,14 +132,20 @@ end = struct
         | s::styles -> (s, x) :: zip-tick-styles styles xs
       )
 
+  let find-position min max value = match value with
+    | Leftmost -> min
+    | Rightmost -> max
+    | CustomPosition(x) -> x
+
   let new-custom-x ?:ctxf ?:axis-style vals its range ptmap ctx =
     let ctx = Option.map-or ctx (fun ctxf -> ctxf ctx) ctxf in
     let axis-style = Option.unwrap-or axis-style-default axis-style in
 
     let (xmin, xmax) = range#x in
     let (ymin, ymax) = range#y in
-    let pt1 = (ptmap (xmin, ymin)) in
-    let pt2 = (ptmap (xmax, ymin)) in
+    let axis-y = find-position ymin ymax axis-style#position in
+    let pt1 = (ptmap (xmin, axis-y)) in
+    let pt2 = (ptmap (xmax, axis-y)) in
     let line = match axis-style#arrow with
       | Some opts -> Gr.arrow 1pt Color.black opts#lenL opts#lenM opts#lenP pt1 pt2
       | None -> [stroke 1pt Color.black (Gr.line pt1 pt2)]
@@ -172,8 +191,9 @@ end = struct
 
     let (xmin, xmax) = range#x in
     let (ymin, ymax) = range#y in
-    let pt1 = (ptmap (xmin, ymin)) in
-    let pt2 = (ptmap (xmin, ymax)) in
+    let axis-x = find-position xmin xmax axis-style#position in
+    let pt1 = (ptmap (axis-x, ymin)) in
+    let pt2 = (ptmap (axis-x, ymax)) in
     let line = match axis-style#arrow with
       | Some opts -> Gr.arrow 1pt Color.black opts#lenL opts#lenM opts#lenP pt1 pt2
       | None -> [stroke 1pt Color.black (Gr.line pt1 pt2)]
