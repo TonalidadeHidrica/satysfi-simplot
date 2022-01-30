@@ -237,7 +237,7 @@ end = struct
     let ticks =
       let tickf (style, xval) =
         if style#tick then
-          let (x, y) = ptmap (xval, ymin) in
+          let (x, y) = ptmap (xval, axis-y) in
           [stroke 0.5pt Color.black
             (Gr.line (x, y) (x, y -' 5pt))]
         else []
@@ -249,7 +249,7 @@ end = struct
 
     let ticklabels =
       let ticklabelf (style, (xval, it)) =
-        let (x, y) = ptmap (xval, ymin) in
+        let (x, y) = ptmap (xval, axis-y) in
         let ib = read-inline ctx it in
         let (wid, ht, dp) = get-natural-metrics ib in
         draw-text (x -' wid *' 0.5, y -' style#offset -' ht) ib
@@ -270,7 +270,7 @@ end = struct
             let (y, coef) = match axis-style#position with
               | Rightmost -> 
                   let bbox-ymax g = let ((_, _), (_, y)) = get-graphics-bbox g in y in
-                  let (_, ymax) = ptmap (0., ymax) in
+                  let (_, ymax) = ptmap (0., axis-y) in
                   let y =
                     ticklabels
                       |> List.map bbox-ymax
@@ -279,7 +279,7 @@ end = struct
                     (y, 1.)
               | _ -> 
                   let bbox-ymin g = let ((_, y), (_, _)) = get-graphics-bbox g in y in
-                  let (_, ymin) = ptmap (0., ymin) in
+                  let (_, ymin) = ptmap (0., axis-y) in
                   let y =
                     ticklabels
                       |> List.map bbox-ymin
