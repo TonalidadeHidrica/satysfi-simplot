@@ -312,12 +312,17 @@ end = struct
       | None -> [stroke axis-style#width axis-style#color (Gr.line pt1 pt2)]
     in
 
+    let is-rightmost = match axis-style#position with
+      | Rightmost -> true
+      | _ -> false
+    in
+
     let ticks =
       let tickf (style, yval) =
         if style#tick then
-          let (x, y) = ptmap (xmin, yval) in
+          let (x, y) = ptmap (if is-rightmost then xmax else xmin, yval) in
           [stroke 0.5pt Color.black
-            (Gr.line (x, y) (x -' 5pt, y))]
+            (Gr.line (x, y) (if is-rightmost then x +' 5pt else x -' 5pt, y))]
         else []
       in
       zip-tick-styles axis-style#tick-styles vals
@@ -327,10 +332,10 @@ end = struct
 
     let ticklabels =
       let ticklabelf (style, (yval, it)) =
-        let (x, y) = ptmap (xmin, yval) in
+        let (x, y) = ptmap (if is-rightmost then xmax else xmin, yval) in
         let ib = read-inline (ctxf ctx) it in
         let (wid, ht, dp) = get-natural-metrics ib in
-        draw-text (x -' style#offset -' wid, y -' (ht -' dp) *' 0.5 ) ib
+        draw-text (if is-rightmost then x +' style#offset else x -' style#offset -' wid, y -' (ht -' dp) *' 0.5 ) ib
       in
       List.zip vals its
         |> zip-tick-styles axis-style#tick-styles
@@ -457,6 +462,8 @@ module Chart : sig
   val set-xlim : float -> float -> chart -> chart
   val set-ylim : float -> float -> chart -> chart
 
+  val get-ptmap : chart -> pointmap
+
   val draw : chart -> FigBox.figbox
 
 end = struct
@@ -510,8 +517,7 @@ end = struct
   let add-text text cht = (| cht with texts = text :: cht#texts |)
   let add-texts texts cht = (| cht with texts = List.append texts cht#texts |)
 
-  let draw cht =
-
+  let get-range cht =
     let (xmin, xmax) = cht#canvas#xlim |> Option.from (
       cht#graphs
         |> List.map Graph.get-range
@@ -536,14 +542,22 @@ end = struct
         ) (0., 0.)
     )
     in
+    (| x = (xmin, xmax); y = (ymin, ymax) |)
 
-    let range = (| x = (xmin, xmax); y = (ymin, ymax) |) in
+  let get-ptmap-from-range cht range (x, y) = 
+    let (xmin, xmax) = range#x in
+    let (ymin, ymax) = range#y in
+    let xlen = cht#canvas#width *' ( (x -. xmin) /. (xmax -. xmin) ) in
+    let ylen = cht#canvas#height *' ( (y -. ymin) /. (ymax -. ymin) ) in
+    (xlen, ylen)
 
-    let ptmap (x, y) =
-      let xlen = cht#canvas#width *' ( (x -. xmin) /. (xmax -. xmin) ) in
-      let ylen = cht#canvas#height *' ( (y -. ymin) /. (ymax -. ymin) ) in
-      (xlen, ylen)
-    in
+  let get-ptmap cht =
+    get-range cht
+      |> get-ptmap-from-range cht 
+
+  let draw cht =
+    let range = get-range cht in
+    let ptmap = get-ptmap-from-range cht range in
 
     let ibf ctx =
       let gr-grids = cht#grids |> List.map (Grid.draw-grid range ptmap) |> List.concat in
