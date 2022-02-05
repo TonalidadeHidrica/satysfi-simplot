@@ -322,7 +322,7 @@ end = struct
     let ticks =
       let tickf (style, yval) =
         if style#tick then
-          let (x, y) = ptmap (if is-rightmost then xmax else xmin, yval) in
+          let (x, y) = ptmap (axis-x, yval) in
           [stroke 0.5pt Color.black
             (Gr.line (x, y) (if is-rightmost then x +' 5pt else x -' 5pt, y))]
         else []
@@ -334,7 +334,7 @@ end = struct
 
     let ticklabels =
       let ticklabelf (style, (yval, it)) =
-        let (x, y) = ptmap (if is-rightmost then xmax else xmin, yval) in
+        let (x, y) = ptmap (axis-x, yval) in
         let ib = read-inline (ctxf ctx) it in
         let (wid, ht, dp) = get-natural-metrics ib in
         draw-text (if is-rightmost then x +' style#offset else x -' style#offset -' wid, y -' (ht -' dp) *' 0.5 ) ib
