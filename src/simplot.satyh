@@ -66,6 +66,7 @@ module Text : sig
   val draw-text: context -> pointmap -> text -> graphics list
 
   val top-left: text -> text
+  val top-right: text -> text
 end = struct
   type text = (|
     it: inline-text;
@@ -101,6 +102,7 @@ end = struct
   let p = 0.5
   let m = 0.-.0.5
   let top-left text = (| text with x-shift = m; y-shift = p |)
+  let top-right text = (| text with x-shift = p; y-shift = p |)
 end
 
 
