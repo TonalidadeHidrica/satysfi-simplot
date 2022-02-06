@@ -586,7 +586,7 @@ end = struct
       let gr-axis = cht#axes |> List.map (Axis.draw-axis range ptmap ctx) |> List.concat in
       let gr-texts = cht#texts |> List.map (Text.draw-text ctx ptmap) |> List.concat in
       inline-graphics (cht#canvas#width) (cht#canvas#height) 0pt
-        (fun origin -> [gr-grids; gr-graph; gr-axis; gr-texts] |> List.concat |> List.map (shift-graphics origin))
+        (fun origin -> [gr-grids; gr-axis; gr-graph; gr-texts] |> List.concat |> List.map (shift-graphics origin))
     in
     FigBox.rawbox ibf
 
