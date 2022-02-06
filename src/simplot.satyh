@@ -114,6 +114,7 @@ module Axis : sig
   val tick-style-default: tick-style
   val set-tick: bool -> tick-style -> tick-style
   val set-offset: length -> tick-style -> tick-style
+  val set-tick-inner: tick-style -> tick-style
 
   type label-style
   val label: inline-text -> label-style
@@ -147,13 +148,18 @@ end = struct
   type tick-style = (|
     tick: bool;
     offset: length;
+    tick-from: length;
+    tick-to: length;
   |)
   let tick-style-default = (|
     tick = true;
     offset = 6pt;
+    tick-from = Length.neg 5pt;
+    tick-to = 0pt;
   |)
   let set-tick x a = (| a with tick = x |)
   let set-offset x a = (| a with offset = x |)
+  let set-tick-inner x = (| x with tick-from = 0pt; tick-to = 5pt |)
 
   type label-position =
     | NextToHead
@@ -236,12 +242,21 @@ end = struct
       | None -> [stroke axis-style#width axis-style#color (Gr.line pt1 pt2)]
     in
 
+    let is-rightmost = match axis-style#position with
+      | Rightmost -> true
+      | _ -> false
+    in
+
     let ticks =
       let tickf (style, xval) =
         if style#tick then
           let (x, y) = ptmap (xval, axis-y) in
-          [stroke 0.5pt Color.black
-            (Gr.line (x, y) (x, y -' 5pt))]
+          let y-from = if is-rightmost then y -' style#tick-from else y +' style#tick-from in
+          let y-to = if is-rightmost then y -' style#tick-to else y +' style#tick-to in
+          [
+            Gr.line (x, y-from) (x, y-to)
+              |> stroke 0.5pt Color.black;
+          ]
         else []
       in
       zip-tick-styles axis-style#tick-styles vals
@@ -323,8 +338,12 @@ end = struct
       let tickf (style, yval) =
         if style#tick then
           let (x, y) = ptmap (axis-x, yval) in
-          [stroke 0.5pt Color.black
-            (Gr.line (x, y) (if is-rightmost then x +' 5pt else x -' 5pt, y))]
+          let x-from = if is-rightmost then x -' style#tick-from else x +' style#tick-from in
+          let x-to = if is-rightmost then x -' style#tick-to else x +' style#tick-to in
+          [
+            Gr.line (x-from, y) (x-to, y)
+              |> stroke 0.5pt Color.black;
+          ]
         else []
       in
       zip-tick-styles axis-style#tick-styles vals
